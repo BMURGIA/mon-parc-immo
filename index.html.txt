@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestion Parc Immobilier</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1e293b">
+
+  <!-- Tailwind CSS pour un design propre -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- jsPDF pour générer les quittances en PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen">
+
+  <!-- En-tête -->
+  <header class="bg-slate-900 text-white p-4 shadow-md sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto flex justify-between items-center">
+      <h1 class="text-xl font-bold flex items-center gap-2">
+        🏢 <span>Parc Immobilier</span>
+      </h1>
+      <span id="pwa-status" class="text-xs bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-full border border-emerald-500/30">PWA Active</span>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto p-4 space-y-8">
+
+    <!-- KPI / Tableau de bord synthétique -->
+    <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <p class="text-xs uppercase font-bold text-slate-400">Total Biens</p>
+        <p id="kpi-biens" class="text-3xl font-black text-slate-800 mt-1">0</p>
+      </div>
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <p class="text-xs uppercase font-bold text-slate-400">Loyers Perçus (Mois)</p>
+        <p id="kpi-loyers" class="text-3xl font-black text-emerald-600 mt-1">0 €</p>
+      </div>
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <p class="text-xs uppercase font-bold text-slate-400">Impayés</p>
+        <p id="kpi-impayes" class="text-3xl font-black text-rose-600 mt-1">0 €</p>
+      </div>
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <p class="text-xs uppercase font-bold text-slate-400">Charges Déductibles</p>
+        <p id="kpi-charges" class="text-3xl font-black text-amber-600 mt-1">0 €</p>
+      </div>
+    </section>
+
+    <!-- Section 1 : Ajout d'un Bien -->
+    <section class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+      <h2 class="text-lg font-bold text-slate-900 border-b pb-2">1. Ajouter un bien immobilier</h2>
+      <form id="form-bien" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <input type="text" id="bien-nom" placeholder="Nom (ex: Studio Centre)" required class="p-2 border rounded-lg w-full">
+        <input type="text" id="bien-adresse" placeholder="Adresse" required class="p-2 border rounded-lg w-full">
+        <select id="bien-regime" class="p-2 border rounded-lg w-full">
+          <option value="LMNP">LMNP</option>
+          <option value="Foncier Nu">Foncier Nu</option>
+          <option value="SCI">SCI</option>
+        </select>
+        <select id="bien-type" class="p-2 border rounded-lg w-full">
+          <option value="Residentiel">Résidentiel</option>
+          <option value="Professionnel">Professionnel</option>
+        </select>
+        <input type="number" step="0.01" id="bien-loyer" placeholder="Loyer HC (€)" required class="p-2 border rounded-lg w-full">
+        <input type="number" step="0.01" id="bien-charges" placeholder="Charges (€)" class="p-2 border rounded-lg w-full">
+        <button type="submit" class="md:col-span-3 bg-slate-900 text-white font-semibold py-2.5 rounded-lg hover:bg-slate-800 transition">Ajouter le bien</button>
+      </form>
+
+      <!-- Liste des biens -->
+      <div class="mt-6">
+        <h3 class="font-bold text-sm text-slate-500 mb-2">Liste de vos biens</h3>
+        <div id="liste-biens" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+      </div>
+    </section>
+
+    <!-- Section 2 : Calculateur d'indexation IRL / ILAT -->
+    <section class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+      <h2 class="text-lg font-bold text-slate-900 border-b pb-2">2. Calculateur de révision de loyer (Indexation)</h2>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="text-xs font-semibold text-slate-500">Loyer actuel HC (€)</label>
+          <input type="number" step="0.01" id="calc-loyer" placeholder="600" class="p-2 border rounded-lg w-full mt-1">
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-500">Ancien Indice</label>
+          <input type="number" step="0.01" id="calc-ancien-indice" placeholder="130.21" class="p-2 border rounded-lg w-full mt-1">
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-500">Nouvel Indice (INSEE)</label>
+          <input type="number" step="0.01" id="calc-nouveau-indice" placeholder="135.10" class="p-2 border rounded-lg w-full mt-1">
+        </div>
+        <div class="flex items-end">
+          <button onclick="calculerIndexation()" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 w-full">Calculer</button>
+        </div>
+      </div>
+      <div id="resultat-indexation" class="hidden p-4 bg-indigo-50 border border-indigo-100 rounded-lg text-indigo-900 font-medium"></div>
+    </section>
+
+    <!-- Section 3 : Quittances & PDF -->
+    <section class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+      <h2 class="text-lg font-bold text-slate-900 border-b pb-2">3. Générateur de Quittance de Loyer PDF</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <input type="text" id="pdf-bailleur" placeholder="Nom du Bailleur (Vous)" class="p-2 border rounded-lg w-full">
+        <input type="text" id="pdf-locataire" placeholder="Nom du Locataire" class="p-2 border rounded-lg w-full">
+        <input type="text" id="pdf-bien" placeholder="Adresse du bien" class="p-2 border rounded-lg w-full">
+        <input type="text" id="pdf-periode" placeholder="Période (ex: Août 2026)" class="p-2 border rounded-lg w-full">
+        <input type="number" id="pdf-montant" placeholder="Montant Total Perçu (€)" class="p-2 border rounded-lg w-full">
+        <button onclick="genererQuittancePDF()" class="bg-emerald-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-emerald-700 w-full">📄 Télécharger Quittance PDF</button>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // ----------------------------------------------------
+    // CONFIGURATION SUPABASE (A REMPLACER AVEC VOS CLEFS)
+    // ----------------------------------------------------
+    const SUPABASE_URL = 'https://kotojtikriclqpmznvxa.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvdG9qdGlrcmljbHFwbXpudnhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNzg5NjcsImV4cCI6MjEwMjk1NDk2N30.aj6BMvL8XWVkntcW119QOsEUFfScTihGtvNt6VliDWU';
+    const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Enregistrement PWA Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(() => console.log('SW enregistré avec succès'))
+        .catch(err => console.error('Erreur SW:', err));
+    }
+
+    // --- BIENS : Charger et Afficher ---
+    async function chargerBiens() {
+      const { data, error } = await db.from('biens').select('*').order('created_at', { ascending: false });
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      const container = document.getElementById('liste-biens');
+      document.getElementById('kpi-biens').innerText = data.length;
+
+      let totalLoyers = 0;
+      container.innerHTML = '';
+
+      data.forEach(b => {
+        totalLoyers += Number(b.loyer_hc);
+        container.innerHTML += `
+          <div class="p-4 border rounded-lg bg-slate-50 flex justify-between items-center shadow-sm">
+            <div>
+              <p class="font-bold text-slate-800">${b.nom}</p>
+              <p class="text-xs text-slate-500">${b.adresse} • <span class="bg-slate-200 px-1.5 py-0.5 rounded text-slate-700 font-medium">${b.regime_fiscal}</span></p>
+            </div>
+            <div class="text-right">
+              <p class="font-black text-slate-900">${b.loyer_hc} € <span class="text-xs font-normal text-slate-400">HC</span></p>
+              <p class="text-xs text-slate-400">+${b.charges || 0} € chg</p>
+            </div>
+          </div>
+        `;
+      });
+
+      document.getElementById('kpi-loyers').innerText = `${totalLoyers.toFixed(2)} €`;
+    }
+
+    // --- BIENS : Ajouter un nouveau bien ---
+    document.getElementById('form-bien').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newBien = {
+        nom: document.getElementById('bien-nom').value,
+        adresse: document.getElementById('bien-adresse').value,
+        regime_fiscal: document.getElementById('bien-regime').value,
+        type_bail: document.getElementById('bien-type').value,
+        loyer_hc: parseFloat(document.getElementById('bien-loyer').value),
+        charges: parseFloat(document.getElementById('bien-charges').value || 0)
+      };
+
+      const { error } = await db.from('biens').insert([newBien]);
+      if (!error) {
+        e.target.reset();
+        chargerBiens();
+      } else {
+        alert('Erreur lors de la sauvegarde : ' + error.message);
+      }
+    });
+
+    // --- CALCULATEUR IRL ---
+    function calculerIndexation() {
+      const loyer = parseFloat(document.getElementById('calc-loyer').value);
+      const ancien = parseFloat(document.getElementById('calc-ancien-indice').value);
+      const nouveau = parseFloat(document.getElementById('calc-nouveau-indice').value);
+
+      if (!loyer || !ancien || !nouveau) {
+        alert('Veuillez remplir tous les champs du calculateur.');
+        return;
+      }
+
+      // Formule Officielle INSEE : Nouveau Loyer = Loyer Actuel x (Nouvel Indice / Ancien Indice)
+      const nouveauLoyer = (loyer * (nouveau / ancien)).toFixed(2);
+      const augmentation = (nouveauLoyer - loyer).toFixed(2);
+
+      const resDiv = document.getElementById('resultat-indexation');
+      resDiv.classList.remove('hidden');
+      resDiv.innerHTML = `
+        <strong>Nouveau Loyer Révisé : ${nouveauLoyer} € / mois</strong><br>
+        <span class="text-xs opacity-80">Augmentation mensuelle de +${augmentation} € (selon la formule légale INSEE)</span>
+      `;
+    }
+
+    // --- GÉNÉRATEUR QUITTANCE PDF ---
+    function genererQuittancePDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      const bailleur = document.getElementById('pdf-bailleur').value || 'Le Bailleur';
+      const locataire = document.getElementById('pdf-locataire').value || 'Le Locataire';
+      const bien = document.getElementById('pdf-bien').value || 'Adresse du logement';
+      const periode = document.getElementById('pdf-periode').value || 'Mois en cours';
+      const montant = document.getElementById('pdf-montant').value || '0';
+
+      // Design du document PDF
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.text("QUITTANCE DE LOYER", 105, 25, { align: "center" });
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Période : ${periode}`, 105, 33, { align: "center" });
+
+      doc.setLineWidth(0.5);
+      doc.line(20, 40, 190, 40);
+
+      doc.text(`Bailleur : ${bailleur}`, 20, 55);
+      doc.text(`Locataire : ${locataire}`, 20, 65);
+      doc.text(`Adresse du bien : ${bien}`, 20, 75);
+
+      doc.rect(20, 90, 170, 35);
+      doc.setFont("helvetica", "bold");
+      doc.text(`Montant total perçu : ${montant} €`, 30, 105);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Je soussigné(e) ${bailleur}, propriétaire du logement désigné ci-dessus,`, 30, 115);
+      doc.text(`confirme avoir reçu la somme de ${montant} € au titre du loyer et des charges.`, 30, 120);
+
+      doc.text(`Fait le : ${new Date().toLocaleDateString('fr-FR')}`, 130, 140);
+      doc.text("Signature :", 130, 150);
+
+      // Téléchargement automatique
+      doc.save(`Quittance_${locataire.replace(/\s+/g, '_')}_${periode}.pdf`);
+    }
+
+    // Initialisation
+    chargerBiens();
+  </script>
+</body>
+</html>
