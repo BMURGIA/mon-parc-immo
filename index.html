@@ -6,249 +6,487 @@
   <title>Gestion Parc Immobilier</title>
   
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#1e293b">
+  <meta name="theme-color" content="#0f172a">
 
-  <!-- Tailwind CSS pour un design propre -->
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Supabase JS -->
+  <!-- Supabase JS SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- jsPDF pour générer les quittances en PDF -->
+  <!-- jsPDF pour les quittances -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans min-h-screen">
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen pb-12">
 
-  <!-- En-tête -->
-  <header class="bg-slate-900 text-white p-4 shadow-md sticky top-0 z-50">
+  <!-- En-tête principal -->
+  <header class="bg-slate-900 text-white p-4 shadow-lg sticky top-0 z-50">
     <div class="max-w-6xl mx-auto flex justify-between items-center">
       <h1 class="text-xl font-bold flex items-center gap-2">
-        🏢 <span>Parc Immobilier</span>
+        🏢 <span>Mon Parc Immo</span>
       </h1>
-      <span id="pwa-status" class="text-xs bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-full border border-emerald-500/30">PWA Active</span>
+      <span class="text-xs bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-full border border-emerald-500/30 font-medium">PWA Sync</span>
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto p-4 space-y-8">
+  <!-- Navigation par Onglets -->
+  <nav class="bg-white border-b border-slate-200 sticky top-[60px] z-40 shadow-sm">
+    <div class="max-w-6xl mx-auto flex overflow-x-auto text-sm font-semibold text-slate-600">
+      <button onclick="showTab('biens')" class="tab-btn px-5 py-3 border-b-2 border-indigo-600 text-indigo-600 whitespace-nowrap" id="btn-biens">🏠 Biens</button>
+      <button onclick="showTab('locataires')" class="tab-btn px-5 py-3 border-b-2 border-transparent hover:text-indigo-600 whitespace-nowrap" id="btn-locataires">👤 Locataires & Baux</button>
+      <button onclick="showTab('loyers')" class="tab-btn px-5 py-3 border-b-2 border-transparent hover:text-indigo-600 whitespace-nowrap" id="btn-loyers">💳 Loyers & Quittances</button>
+      <button onclick="showTab('compta')" class="tab-btn px-5 py-3 border-b-2 border-transparent hover:text-indigo-600 whitespace-nowrap" id="btn-compta">📊 Comptabilité</button>
+      <button onclick="showTab('travaux')" class="tab-btn px-5 py-3 border-b-2 border-transparent hover:text-indigo-600 whitespace-nowrap" id="btn-travaux">🛠️ Travaux</button>
+      <button onclick="showTab('indexation')" class="tab-btn px-5 py-3 border-b-2 border-transparent hover:text-indigo-600 whitespace-nowrap" id="btn-indexation">🧮 IRL / Indexation</button>
+    </div>
+  </nav>
 
-    <!-- KPI / Tableau de bord synthétique -->
-    <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-        <p class="text-xs uppercase font-bold text-slate-400">Total Biens</p>
-        <p id="kpi-biens" class="text-3xl font-black text-slate-800 mt-1">0</p>
+  <main class="max-w-6xl mx-auto p-4 space-y-6">
+
+    <!-- KPI Synthèse (Visible partout) -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <p class="text-xs font-bold uppercase text-slate-400">Total Biens</p>
+        <p id="kpi-biens" class="text-2xl font-black text-slate-800 mt-1">0</p>
       </div>
-      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-        <p class="text-xs uppercase font-bold text-slate-400">Loyers Perçus (Mois)</p>
-        <p id="kpi-loyers" class="text-3xl font-black text-emerald-600 mt-1">0 €</p>
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <p class="text-xs font-bold uppercase text-slate-400">Loyers Mensuels</p>
+        <p id="kpi-loyers" class="text-2xl font-black text-emerald-600 mt-1">0 €</p>
       </div>
-      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-        <p class="text-xs uppercase font-bold text-slate-400">Impayés</p>
-        <p id="kpi-impayes" class="text-3xl font-black text-rose-600 mt-1">0 €</p>
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <p class="text-xs font-bold uppercase text-slate-400">Charges Total</p>
+        <p id="kpi-depenses" class="text-2xl font-black text-amber-600 mt-1">0 €</p>
       </div>
-      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-        <p class="text-xs uppercase font-bold text-slate-400">Charges Déductibles</p>
-        <p id="kpi-charges" class="text-3xl font-black text-amber-600 mt-1">0 €</p>
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <p class="text-xs font-bold uppercase text-slate-400">Travaux à faire</p>
+        <p id="kpi-travaux" class="text-2xl font-black text-rose-600 mt-1">0</p>
       </div>
     </section>
 
-    <!-- Section 1 : Ajout d'un Bien -->
-    <section class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-      <h2 class="text-lg font-bold text-slate-900 border-b pb-2">1. Ajouter un bien immobilier</h2>
-      <form id="form-bien" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <input type="text" id="bien-nom" placeholder="Nom (ex: Studio Centre)" required class="p-2 border rounded-lg w-full">
-        <input type="text" id="bien-adresse" placeholder="Adresse" required class="p-2 border rounded-lg w-full">
-        <select id="bien-regime" class="p-2 border rounded-lg w-full">
-          <option value="LMNP">LMNP</option>
-          <option value="Foncier Nu">Foncier Nu</option>
-          <option value="SCI">SCI</option>
-        </select>
-        <select id="bien-type" class="p-2 border rounded-lg w-full">
-          <option value="Residentiel">Résidentiel</option>
-          <option value="Professionnel">Professionnel</option>
-        </select>
-        <input type="number" step="0.01" id="bien-loyer" placeholder="Loyer HC (€)" required class="p-2 border rounded-lg w-full">
-        <input type="number" step="0.01" id="bien-charges" placeholder="Charges (€)" class="p-2 border rounded-lg w-full">
-        <button type="submit" class="md:col-span-3 bg-slate-900 text-white font-semibold py-2.5 rounded-lg hover:bg-slate-800 transition">Ajouter le bien</button>
-      </form>
+    <!-- ONGLET 1 : BIENS -->
+    <div id="tab-biens" class="tab-content space-y-6">
+      <section class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <h2 class="text-lg font-bold text-slate-900 border-b pb-2">Ajouter un bien immobilier</h2>
+        <form id="form-bien" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <input type="text" id="b-nom" placeholder="Nom du bien (ex: T2 Centre)" required class="p-2 border rounded-lg">
+          <input type="text" id="b-adresse" placeholder="Adresse complète" required class="p-2 border rounded-lg">
+          <select id="b-regime" class="p-2 border rounded-lg">
+            <option value="LMNP">Régime : LMNP</option>
+            <option value="Foncier Nu">Régime : Foncier Nu</option>
+            <option value="SCI">Régime : SCI</option>
+          </select>
+          <select id="b-type" class="p-2 border rounded-lg">
+            <option value="Residentiel">Résidentiel</option>
+            <option value="Professionnel">Professionnel</option>
+          </select>
+          <input type="number" step="0.01" id="b-loyer" placeholder="Loyer HC (€)" required class="p-2 border rounded-lg">
+          <input type="number" step="0.01" id="b-charges" placeholder="Charges (€)" class="p-2 border rounded-lg">
+          <button type="submit" class="md:col-span-3 bg-slate-900 text-white font-semibold py-2 rounded-lg hover:bg-slate-800">Enregistrer le bien</button>
+        </form>
+      </section>
+      <div id="list-biens" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </div>
 
-      <!-- Liste des biens -->
-      <div class="mt-6">
-        <h3 class="font-bold text-sm text-slate-500 mb-2">Liste de vos biens</h3>
-        <div id="liste-biens" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
-      </div>
-    </section>
+    <!-- ONGLET 2 : LOCATAIRES & BAUX -->
+    <div id="tab-locataires" class="tab-content hidden space-y-6">
+      <section class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <h2 class="text-lg font-bold text-slate-900 border-b pb-2">Nouveau Locataire & Bail</h2>
+        <form id="form-locataire" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <input type="text" id="l-nom" placeholder="Nom" required class="p-2 border rounded-lg">
+          <input type="text" id="l-prenom" placeholder="Prénom" required class="p-2 border rounded-lg">
+          <input type="email" id="l-email" placeholder="Email" class="p-2 border rounded-lg">
+          <input type="tel" id="l-tel" placeholder="Téléphone" class="p-2 border rounded-lg">
+          <select id="l-bien" class="p-2 border rounded-lg" required>
+            <option value="">-- Associer à un bien --</option>
+          </select>
+          <input type="date" id="l-date-debut" required class="p-2 border rounded-lg">
+          <div>
+            <label class="text-xs font-semibold text-slate-500">Pièce d'identité (PDF/Image)</label>
+            <input type="file" id="l-file-id" class="p-1 border rounded-lg w-full text-xs">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-500">Attestation Assurance</label>
+            <input type="file" id="l-file-assu" class="p-1 border rounded-lg w-full text-xs">
+          </div>
+          <button type="submit" class="md:col-span-3 bg-slate-900 text-white font-semibold py-2 rounded-lg hover:bg-slate-800">Ajouter le locataire</button>
+        </form>
+      </section>
+      <div id="list-locataires" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </div>
 
-    <!-- Section 2 : Calculateur d'indexation IRL / ILAT -->
-    <section class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-      <h2 class="text-lg font-bold text-slate-900 border-b pb-2">2. Calculateur de révision de loyer (Indexation)</h2>
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div>
-          <label class="text-xs font-semibold text-slate-500">Loyer actuel HC (€)</label>
-          <input type="number" step="0.01" id="calc-loyer" placeholder="600" class="p-2 border rounded-lg w-full mt-1">
-        </div>
-        <div>
-          <label class="text-xs font-semibold text-slate-500">Ancien Indice</label>
-          <input type="number" step="0.01" id="calc-ancien-indice" placeholder="130.21" class="p-2 border rounded-lg w-full mt-1">
-        </div>
-        <div>
-          <label class="text-xs font-semibold text-slate-500">Nouvel Indice (INSEE)</label>
-          <input type="number" step="0.01" id="calc-nouveau-indice" placeholder="135.10" class="p-2 border rounded-lg w-full mt-1">
-        </div>
-        <div class="flex items-end">
-          <button onclick="calculerIndexation()" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 w-full">Calculer</button>
-        </div>
+    <!-- ONGLET 3 : LOYERS & QUITTANCES -->
+    <div id="tab-loyers" class="tab-content hidden space-y-6">
+      <section class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <h2 class="text-lg font-bold text-slate-900 border-b pb-2">Enregistrer un paiement de loyer</h2>
+        <form id="form-paiement" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <select id="p-bail" class="p-2 border rounded-lg" required>
+            <option value="">-- Sélectionner le bail --</option>
+          </select>
+          <input type="month" id="p-mois" required class="p-2 border rounded-lg">
+          <input type="number" step="0.01" id="p-montant" placeholder="Montant reçu (€)" required class="p-2 border rounded-lg">
+          <button type="submit" class="md:col-span-3 bg-emerald-600 text-white font-semibold py-2 rounded-lg hover:bg-emerald-700">Enregistrer le paiement</button>
+        </form>
+      </section>
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <h3 class="font-bold text-slate-900">Historique des Paiements & Quittances PDF</h3>
+        <div id="list-paiements" class="divide-y divide-slate-100"></div>
       </div>
-      <div id="resultat-indexation" class="hidden p-4 bg-indigo-50 border border-indigo-100 rounded-lg text-indigo-900 font-medium"></div>
-    </section>
+    </div>
 
-    <!-- Section 3 : Quittances & PDF -->
-    <section class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-      <h2 class="text-lg font-bold text-slate-900 border-b pb-2">3. Générateur de Quittance de Loyer PDF</h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <input type="text" id="pdf-bailleur" placeholder="Nom du Bailleur (Vous)" class="p-2 border rounded-lg w-full">
-        <input type="text" id="pdf-locataire" placeholder="Nom du Locataire" class="p-2 border rounded-lg w-full">
-        <input type="text" id="pdf-bien" placeholder="Adresse du bien" class="p-2 border rounded-lg w-full">
-        <input type="text" id="pdf-periode" placeholder="Période (ex: Août 2026)" class="p-2 border rounded-lg w-full">
-        <input type="number" id="pdf-montant" placeholder="Montant Total Perçu (€)" class="p-2 border rounded-lg w-full">
-        <button onclick="genererQuittancePDF()" class="bg-emerald-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-emerald-700 w-full">📄 Télécharger Quittance PDF</button>
-      </div>
-    </section>
+    <!-- ONGLET 4 : COMPTABILITÉ -->
+    <div id="tab-compta" class="tab-content hidden space-y-6">
+      <section class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <h2 class="text-lg font-bold text-slate-900 border-b pb-2">Ajouter une dépense / charge déductible</h2>
+        <form id="form-depense" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <select id="d-bien" class="p-2 border rounded-lg" required>
+            <option value="">-- Sélectionner le bien --</option>
+          </select>
+          <select id="d-cat" class="p-2 border rounded-lg">
+            <option value="Travaux">Travaux</option>
+            <option value="Interêts emprunt">Intérêts emprunt</option>
+            <option value="Taxe foncière">Taxe foncière</option>
+            <option value="Assurance">Assurance PNO</option>
+            <option value="Copropriété">Charges Copropriété</option>
+            <option value="Autre">Autre</option>
+          </select>
+          <input type="text" id="d-desc" placeholder="Description" required class="p-2 border rounded-lg">
+          <input type="number" step="0.01" id="d-montant" placeholder="Montant (€)" required class="p-2 border rounded-lg">
+          <input type="date" id="d-date" required class="p-2 border rounded-lg">
+          <button type="submit" class="md:col-span-3 bg-slate-900 text-white font-semibold py-2 rounded-lg hover:bg-slate-800">Ajouter la dépense</button>
+        </form>
+      </section>
+      <div id="list-depenses" class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm divide-y divide-slate-100"></div>
+    </div>
+
+    <!-- ONGLET 5 : TRAVAUX -->
+    <div id="tab-travaux" class="tab-content hidden space-y-6">
+      <section class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <h2 class="text-lg font-bold text-slate-900 border-b pb-2">Carnet d'entretien & Interventions</h2>
+        <form id="form-travaux" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <select id="t-bien" class="p-2 border rounded-lg" required>
+            <option value="">-- Sélectionner le bien --</option>
+          </select>
+          <input type="text" id="t-titre" placeholder="Titre (ex: Remplacement chaudière)" required class="p-2 border rounded-lg">
+          <input type="number" step="0.01" id="t-cout" placeholder="Coût estimé (€)" class="p-2 border rounded-lg">
+          <select id="t-statut" class="p-2 border rounded-lg">
+            <option value="A faire">À faire</option>
+            <option value="En cours">En cours</option>
+            <option value="Terminé">Terminé</option>
+          </select>
+          <button type="submit" class="md:col-span-3 bg-slate-900 text-white font-semibold py-2 rounded-lg hover:bg-slate-800">Ajouter l'intervention</button>
+        </form>
+      </section>
+      <div id="list-travaux" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </div>
+
+    <!-- ONGLET 6 : INDEXATION -->
+    <div id="tab-indexation" class="tab-content hidden space-y-6">
+      <section class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <h2 class="text-lg font-bold text-slate-900 border-b pb-2">Calculateur de Révision de Loyer (IRL / ILAT)</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="text-xs font-semibold text-slate-500">Loyer actuel HC (€)</label>
+            <input type="number" step="0.01" id="calc-loyer" placeholder="650" class="p-2 border rounded-lg w-full mt-1">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-500">Ancien Indice</label>
+            <input type="number" step="0.01" id="calc-ancien" placeholder="130.21" class="p-2 border rounded-lg w-full mt-1">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-500">Nouvel Indice (INSEE)</label>
+            <input type="number" step="0.01" id="calc-nouveau" placeholder="135.10" class="p-2 border rounded-lg w-full mt-1">
+          </div>
+          <button onclick="calculerIRL()" class="md:col-span-3 bg-indigo-600 text-white font-semibold py-2 rounded-lg hover:bg-indigo-700">Calculer le nouveau loyer</button>
+        </div>
+        <div id="res-irl" class="hidden p-4 bg-indigo-50 border border-indigo-200 rounded-lg text-indigo-900 font-medium"></div>
+      </section>
+    </div>
 
   </main>
 
   <script>
     // ----------------------------------------------------
-    // CONFIGURATION SUPABASE (A REMPLACER AVEC VOS CLEFS)
+    // CONFIGURATION SUPABASE
     // ----------------------------------------------------
     const SUPABASE_URL = 'https://kotojtikriclqpmznvxa.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvdG9qdGlrcmljbHFwbXpudnhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNzg5NjcsImV4cCI6MjEwMjk1NDk2N30.aj6BMvL8XWVkntcW119QOsEUFfScTihGtvNt6VliDWU';
     const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Enregistrement PWA Service Worker
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
-        .then(() => console.log('SW enregistré avec succès'))
-        .catch(err => console.error('Erreur SW:', err));
+      navigator.serviceWorker.register('/sw.js').catch(console.error);
     }
 
-    // --- BIENS : Charger et Afficher ---
-    async function chargerBiens() {
-      const { data, error } = await db.from('biens').select('*').order('created_at', { ascending: false });
-      if (error) {
-        console.error(error);
-        return;
-      }
+    // --- NAVIGATION PAR ONGLETS ---
+    function showTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(el => {
+        el.classList.remove('border-indigo-600', 'text-indigo-600');
+        el.classList.add('border-transparent');
+      });
+      document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+      document.getElementById(`btn-${tabName}`).classList.add('border-indigo-600', 'text-indigo-600');
+    }
 
-      const container = document.getElementById('liste-biens');
-      document.getElementById('kpi-biens').innerText = data.length;
+    // --- CHARGEMENT GLOBAL DES DONNÉES ---
+    async function loadAllData() {
+      await Promise.all([loadBiens(), loadLocataires(), loadPaiements(), loadDepenses(), loadTravaux()]);
+    }
 
-      let totalLoyers = 0;
+    // 1. BIENS
+    async function loadBiens() {
+      const { data } = await db.from('biens').select('*').order('created_at', { ascending: false });
+      const container = document.getElementById('list-biens');
+      document.getElementById('kpi-biens').innerText = data ? data.length : 0;
+      
+      let sumLoyer = 0;
       container.innerHTML = '';
-
-      data.forEach(b => {
-        totalLoyers += Number(b.loyer_hc);
-        container.innerHTML += `
-          <div class="p-4 border rounded-lg bg-slate-50 flex justify-between items-center shadow-sm">
-            <div>
-              <p class="font-bold text-slate-800">${b.nom}</p>
-              <p class="text-xs text-slate-500">${b.adresse} • <span class="bg-slate-200 px-1.5 py-0.5 rounded text-slate-700 font-medium">${b.regime_fiscal}</span></p>
-            </div>
-            <div class="text-right">
-              <p class="font-black text-slate-900">${b.loyer_hc} € <span class="text-xs font-normal text-slate-400">HC</span></p>
-              <p class="text-xs text-slate-400">+${b.charges || 0} € chg</p>
-            </div>
-          </div>
-        `;
+      
+      // Mettre à jour aussi les selects dans les autres formulaires
+      ['l-bien', 'd-bien', 't-bien'].forEach(id => {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '<option value="">-- Sélectionner le bien --</option>';
+        if (data) data.forEach(b => sel.innerHTML += `<option value="${b.id}">${b.nom}</option>`);
       });
 
-      document.getElementById('kpi-loyers').innerText = `${totalLoyers.toFixed(2)} €`;
+      if (data) {
+        data.forEach(b => {
+          sumLoyer += Number(b.loyer_hc);
+          container.innerHTML += `
+            <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+              <div>
+                <p class="font-bold text-slate-800">${b.nom}</p>
+                <p class="text-xs text-slate-500">${b.adresse} • <span class="font-semibold text-indigo-600">${b.regime_fiscal}</span></p>
+              </div>
+              <div class="text-right">
+                <p class="font-black text-slate-900">${b.loyer_hc} € <span class="text-xs font-normal">HC</span></p>
+                <p class="text-xs text-slate-400">+${b.charges || 0} € charges</p>
+              </div>
+            </div>`;
+        });
+      }
+      document.getElementById('kpi-loyers').innerText = `${sumLoyer.toFixed(2)} €`;
     }
 
-    // --- BIENS : Ajouter un nouveau bien ---
     document.getElementById('form-bien').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const newBien = {
-        nom: document.getElementById('bien-nom').value,
-        adresse: document.getElementById('bien-adresse').value,
-        regime_fiscal: document.getElementById('bien-regime').value,
-        type_bail: document.getElementById('bien-type').value,
-        loyer_hc: parseFloat(document.getElementById('bien-loyer').value),
-        charges: parseFloat(document.getElementById('bien-charges').value || 0)
-      };
-
-      const { error } = await db.from('biens').insert([newBien]);
-      if (!error) {
-        e.target.reset();
-        chargerBiens();
-      } else {
-        alert('Erreur lors de la sauvegarde : ' + error.message);
-      }
+      await db.from('biens').insert([{
+        nom: document.getElementById('b-nom').value,
+        adresse: document.getElementById('b-adresse').value,
+        regime_fiscal: document.getElementById('b-regime').value,
+        type_bail: document.getElementById('b-type').value,
+        loyer_hc: parseFloat(document.getElementById('b-loyer').value),
+        charges: parseFloat(document.getElementById('b-charges').value || 0)
+      }]);
+      e.target.reset();
+      loadBiens();
     });
 
-    // --- CALCULATEUR IRL ---
-    function calculerIndexation() {
-      const loyer = parseFloat(document.getElementById('calc-loyer').value);
-      const ancien = parseFloat(document.getElementById('calc-ancien-indice').value);
-      const nouveau = parseFloat(document.getElementById('calc-nouveau-indice').value);
+    // 2. LOCATAIRES & DOCUMENTS
+    async function loadLocataires() {
+      const { data } = await db.from('baux').select('*, biens(nom), locataires(*)');
+      const container = document.getElementById('list-locataires');
+      const selPaiement = document.getElementById('p-bail');
+      
+      selPaiement.innerHTML = '<option value="">-- Sélectionner le bail --</option>';
+      container.innerHTML = '';
 
-      if (!loyer || !ancien || !nouveau) {
-        alert('Veuillez remplir tous les champs du calculateur.');
-        return;
+      if (data) {
+        data.forEach(b => {
+          selPaiement.innerHTML += `<option value="${b.id}">${b.locataires.prenom} ${b.locataires.nom} (${b.biens.nom})</option>`;
+          container.innerHTML += `
+            <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm space-y-2">
+              <div class="flex justify-between items-start">
+                <div>
+                  <p class="font-bold text-slate-800">${b.locataires.prenom} ${b.locataires.nom}</p>
+                  <p class="text-xs text-slate-500">Bien : ${b.biens.nom}</p>
+                  <p class="text-xs text-slate-500">Tel : ${b.locataires.telephone || 'N/C'}</p>
+                </div>
+                <span class="text-xs bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded">Bail Actif</span>
+              </div>
+              <div class="pt-2 border-t flex gap-2 text-xs">
+                ${b.locataires.piece_identite_url ? `<a href="${b.locataires.piece_identite_url}" target="_blank" class="text-indigo-600 hover:underline">📄 Pièce d'identité</a>` : ''}
+                ${b.assurance_habitation_url ? `<a href="${b.assurance_habitation_url}" target="_blank" class="text-indigo-600 hover:underline">🛡️ Assurance</a>` : ''}
+              </div>
+            </div>`;
+        });
       }
-
-      // Formule Officielle INSEE : Nouveau Loyer = Loyer Actuel x (Nouvel Indice / Ancien Indice)
-      const nouveauLoyer = (loyer * (nouveau / ancien)).toFixed(2);
-      const augmentation = (nouveauLoyer - loyer).toFixed(2);
-
-      const resDiv = document.getElementById('resultat-indexation');
-      resDiv.classList.remove('hidden');
-      resDiv.innerHTML = `
-        <strong>Nouveau Loyer Révisé : ${nouveauLoyer} € / mois</strong><br>
-        <span class="text-xs opacity-80">Augmentation mensuelle de +${augmentation} € (selon la formule légale INSEE)</span>
-      `;
     }
 
-    // --- GÉNÉRATEUR QUITTANCE PDF ---
-    function genererQuittancePDF() {
+    document.getElementById('form-locataire').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      // Upload de fichiers vers Supabase Storage
+      let idUrl = '', assuUrl = '';
+      const fileId = document.getElementById('l-file-id').files[0];
+      const fileAssu = document.getElementById('l-file-assu').files[0];
+
+      if (fileId) {
+        const { data } = await db.storage.from('documents-pwa').upload(`id_${Date.now()}_${fileId.name}`, fileId);
+        if (data) idUrl = db.storage.from('documents-pwa').getPublicUrl(data.path).data.publicUrl;
+      }
+      if (fileAssu) {
+        const { data } = await db.storage.from('documents-pwa').upload(`assu_${Date.now()}_${fileAssu.name}`, fileAssu);
+        if (data) assuUrl = db.storage.from('documents-pwa').getPublicUrl(data.path).data.publicUrl;
+      }
+
+      // 1. Ajouter le locataire
+      const { data: loc } = await db.from('locataires').insert([{
+        nom: document.getElementById('l-nom').value,
+        prenom: document.getElementById('l-prenom').value,
+        email: document.getElementById('l-email').value,
+        telephone: document.getElementById('l-tel').value,
+        piece_identite_url: idUrl
+      }]).select();
+
+      // 2. Créer le bail associé
+      if (loc) {
+        await db.from('baux').insert([{
+          bien_id: document.getElementById('l-bien').value,
+          locataire_id: loc[0].id,
+          date_debut: document.getElementById('l-date-debut').value,
+          assurance_habitation_url: assuUrl
+        }]);
+      }
+
+      e.target.reset();
+      loadLocataires();
+    });
+
+    // 3. PAIEMENTS & QUITTANCES PDF
+    async function loadPaiements() {
+      const { data } = await db.from('paiements').select('*, baux(*, biens(*), locataires(*))').order('created_at', { ascending: false });
+      const container = document.getElementById('list-paiements');
+      container.innerHTML = '';
+
+      if (data) {
+        data.forEach(p => {
+          container.innerHTML += `
+            <div class="py-3 flex justify-between items-center text-sm">
+              <div>
+                <p class="font-bold text-slate-800">${p.baux.locataires.prenom} ${p.baux.locataires.nom}</p>
+                <p class="text-xs text-slate-500">${p.baux.biens.nom} • Mois : ${p.mois_annee}</p>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="font-black text-emerald-600">${p.montant_recu} €</span>
+                <button onclick="downloadPDF('${p.baux.locataires.prenom} ${p.baux.locataires.nom}', '${p.baux.biens.nom}', '${p.mois_annee}', '${p.montant_recu}')" class="text-xs bg-indigo-50 text-indigo-600 font-semibold px-2.5 py-1 rounded border border-indigo-200 hover:bg-indigo-100">PDF</button>
+              </div>
+            </div>`;
+        });
+      }
+    }
+
+    document.getElementById('form-paiement').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await db.from('paiements').insert([{
+        bail_id: document.getElementById('p-bail').value,
+        mois_annee: document.getElementById('p-mois').value + '-01',
+        montant_recu: parseFloat(document.getElementById('p-montant').value),
+        date_paiement: new Date().toISOString().split('T')[0]
+      }]);
+      e.target.reset();
+      loadPaiements();
+    });
+
+    function downloadPDF(locataire, bien, mois, montant) {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
-
-      const bailleur = document.getElementById('pdf-bailleur').value || 'Le Bailleur';
-      const locataire = document.getElementById('pdf-locataire').value || 'Le Locataire';
-      const bien = document.getElementById('pdf-bien').value || 'Adresse du logement';
-      const periode = document.getElementById('pdf-periode').value || 'Mois en cours';
-      const montant = document.getElementById('pdf-montant').value || '0';
-
-      // Design du document PDF
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(18);
-      doc.text("QUITTANCE DE LOYER", 105, 25, { align: "center" });
-
+      doc.setFontSize(16);
+      doc.text("QUITTANCE DE LOYER", 105, 20, { align: "center" });
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text(`Période : ${periode}`, 105, 33, { align: "center" });
+      doc.text(`Locataire : ${locataire}`, 20, 40);
+      doc.text(`Bien : ${bien}`, 20, 50);
+      doc.text(`Période : ${mois}`, 20, 60);
+      doc.text(`Montant payé : ${montant} €`, 20, 70);
+      doc.text("Je confirme avoir reçu le paiement intégral du loyer pour la période susmentionnée.", 20, 90);
+      doc.save(`Quittance_${locataire}_${mois}.pdf`);
+    }
 
-      doc.setLineWidth(0.5);
-      doc.line(20, 40, 190, 40);
+    // 4. COMPTABILITÉ
+    async function loadDepenses() {
+      const { data } = await db.from('depenses').select('*, biens(nom)').order('date_depense', { ascending: false });
+      const container = document.getElementById('list-depenses');
+      let sumCharges = 0;
+      container.innerHTML = '';
 
-      doc.text(`Bailleur : ${bailleur}`, 20, 55);
-      doc.text(`Locataire : ${locataire}`, 20, 65);
-      doc.text(`Adresse du bien : ${bien}`, 20, 75);
+      if (data) {
+        data.forEach(d => {
+          sumCharges += Number(d.montant);
+          container.innerHTML += `
+            <div class="py-3 flex justify-between items-center text-sm">
+              <div>
+                <p class="font-bold text-slate-800">${d.description} <span class="text-xs font-normal text-slate-400">(${d.categorie})</span></p>
+                <p class="text-xs text-slate-500">${d.biens.nom} • ${d.date_depense}</p>
+              </div>
+              <span class="font-bold text-amber-600">-${d.montant} €</span>
+            </div>`;
+        });
+      }
+      document.getElementById('kpi-depenses').innerText = `${sumCharges.toFixed(2)} €`;
+    }
 
-      doc.rect(20, 90, 170, 35);
-      doc.setFont("helvetica", "bold");
-      doc.text(`Montant total perçu : ${montant} €`, 30, 105);
-      doc.setFont("helvetica", "normal");
-      doc.text(`Je soussigné(e) ${bailleur}, propriétaire du logement désigné ci-dessus,`, 30, 115);
-      doc.text(`confirme avoir reçu la somme de ${montant} € au titre du loyer et des charges.`, 30, 120);
+    document.getElementById('form-depense').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await db.from('depenses').insert([{
+        bien_id: document.getElementById('d-bien').value,
+        categorie: document.getElementById('d-cat').value,
+        description: document.getElementById('d-desc').value,
+        montant: parseFloat(document.getElementById('d-montant').value),
+        date_depense: document.getElementById('d-date').value
+      }]);
+      e.target.reset();
+      loadDepenses();
+    });
 
-      doc.text(`Fait le : ${new Date().toLocaleDateString('fr-FR')}`, 130, 140);
-      doc.text("Signature :", 130, 150);
+    // 5. TRAVAUX
+    async function loadTravaux() {
+      const { data } = await db.from('entretien').select('*, biens(nom)');
+      const container = document.getElementById('list-travaux');
+      let countAFaire = 0;
+      container.innerHTML = '';
 
-      // Téléchargement automatique
-      doc.save(`Quittance_${locataire.replace(/\s+/g, '_')}_${periode}.pdf`);
+      if (data) {
+        data.forEach(t => {
+          if (t.statut !== 'Terminé') countAFaire++;
+          container.innerHTML += `
+            <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+              <div>
+                <p class="font-bold text-slate-800">${t.titre}</p>
+                <p class="text-xs text-slate-500">${t.biens.nom} • Coût est. : ${t.cout || 0} €</p>
+              </div>
+              <span class="text-xs px-2.5 py-1 rounded font-semibold ${t.statut === 'Terminé' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${t.statut}</span>
+            </div>`;
+        });
+      }
+      document.getElementById('kpi-travaux').innerText = countAFaire;
+    }
+
+    document.getElementById('form-travaux').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await db.from('entretien').insert([{
+        bien_id: document.getElementById('t-bien').value,
+        titre: document.getElementById('t-titre').value,
+        cout: parseFloat(document.getElementById('t-cout').value || 0),
+        statut: document.getElementById('t-statut').value
+      }]);
+      e.target.reset();
+      loadTravaux();
+    });
+
+    // 6. CALCULATEUR IRL
+    function calculerIRL() {
+      const loyer = parseFloat(document.getElementById('calc-loyer').value);
+      const ancien = parseFloat(document.getElementById('calc-ancien').value);
+      const nouveau = parseFloat(document.getElementById('calc-nouveau').value);
+      if (!loyer || !ancien || !nouveau) return alert('Complétez tous les champs.');
+      
+      const res = (loyer * (nouveau / ancien)).toFixed(2);
+      const div = document.getElementById('res-irl');
+      div.classList.remove('hidden');
+      div.innerHTML = `Nouveau loyer révisé : <strong>${res} € / mois</strong> (+${(res - loyer).toFixed(2)} €)`;
     }
 
     // Initialisation
-    chargerBiens();
+    loadAllData();
   </script>
 </body>
 </html>
