@@ -85,32 +85,92 @@
       <div id="list-biens" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
     </div>
 
-    <!-- ONGLET 2 : LOCATAIRES & BAUX -->
-    <div id="tab-locataires" class="tab-content hidden space-y-6">
-      <section class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-        <h2 class="text-lg font-bold text-slate-900 border-b pb-2">Nouveau Locataire & Bail</h2>
-        <form id="form-locataire" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <input type="text" id="l-nom" placeholder="Nom" required class="p-2 border rounded-lg">
-          <input type="text" id="l-prenom" placeholder="Prénom" required class="p-2 border rounded-lg">
-          <input type="email" id="l-email" placeholder="Email" class="p-2 border rounded-lg">
-          <input type="tel" id="l-tel" placeholder="Téléphone" class="p-2 border rounded-lg">
-          <select id="l-bien" class="p-2 border rounded-lg" required>
-            <option value="">-- Associer à un bien --</option>
+    <!-- Section / Onglet Baux & Locataires -->
+<div id="tab-baux" class="tab-content">
+  <div class="card">
+    <h3>Créer / Éditer un bail de location</h3>
+    <form id="form-bail" onsubmit="enregistrerBail(event)">
+      <div class="form-grid">
+        <div>
+          <label>Bien immobilier :</label>
+          <select id="bail-bien-id" required>
+            <option value="">-- Sélectionner un bien --</option>
           </select>
-          <input type="date" id="l-date-debut" required class="p-2 border rounded-lg">
-          <div>
-            <label class="text-xs font-semibold text-slate-500">Pièce d'identité (PDF/Image)</label>
-            <input type="file" id="l-file-id" class="p-1 border rounded-lg w-full text-xs">
-          </div>
-          <div>
-            <label class="text-xs font-semibold text-slate-500">Attestation Assurance</label>
-            <input type="file" id="l-file-assu" class="p-1 border rounded-lg w-full text-xs">
-          </div>
-          <button type="submit" class="md:col-span-3 bg-slate-900 text-white font-semibold py-2 rounded-lg hover:bg-slate-800">Ajouter le locataire</button>
-        </form>
-      </section>
-      <div id="list-locataires" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-    </div>
+        </div>
+
+        <div>
+          <label>Nom du locataire :</label>
+          <input type="text" id="bail-locataire" placeholder="ex: Jean Dupont" required />
+        </div>
+
+        <div>
+          <label>Loyer HC (€) :</label>
+          <input type="number" step="0.01" id="bail-loyer" placeholder="570.00" required />
+        </div>
+
+        <div>
+          <label>Charges (€) :</label>
+          <input type="number" step="0.01" id="bail-charges" placeholder="30.00" required />
+        </div>
+
+        <div>
+          <label>Dépôt de garantie (€) :</label>
+          <input type="number" step="0.01" id="bail-garantie" placeholder="600.00" />
+        </div>
+
+        <div>
+          <label>Date de début :</label>
+          <input type="date" id="bail-date-debut" required />
+        </div>
+
+        <div>
+          <label>Lien du document (Google Doc) :</label>
+          <input type="url" id="bail-doc-url" placeholder="https://docs.google.com/document/d/..." />
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary" style="margin-top: 15px;">
+        Enregistrer le bail
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Fonction pour enregistrer le bail dans Supabase
+  async function enregistrerBail(event) {
+    event.preventDefault();
+
+    const bienId = document.getElementById('bail-bien-id').value;
+    const locataire = document.getElementById('bail-locataire').value;
+    const loyer = parseFloat(document.getElementById('bail-loyer').value);
+    const charges = parseFloat(document.getElementById('bail-charges').value) || 0;
+    const garantie = parseFloat(document.getElementById('bail-garantie').value) || 0;
+    const dateDebut = document.getElementById('bail-date-debut').value;
+    const docUrl = document.getElementById('bail-doc-url').value;
+
+    const { data, error } = await supabaseClient
+      .from('baux')
+      .insert([
+        {
+          bien_id: bienId,
+          locataire_nom: locataire,
+          loyer_hc: loyer,
+          charges: charges,
+          depot_garantie: garantie,
+          date_debut: dateDebut,
+          document_url: docUrl
+        }
+      ]);
+
+    if (error) {
+      alert("Erreur lors de l'enregistrement du bail : " + error.message);
+    } else {
+      alert("Bail enregistré avec succès !");
+      document.getElementById('form-bail').reset();
+    }
+  }
+</script>
 
     <!-- ONGLET 3 : LOYERS & QUITTANCES -->
     <div id="tab-loyers" class="tab-content hidden space-y-6">
