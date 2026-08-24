@@ -25,7 +25,7 @@
     label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; }
     input, select { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; }
     button.btn-submit { background: #0f172a; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 15px; }
-    .item-bien { border-bottom: 1px solid #e2e8f0; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
+    .item-bien { border-bottom: 1px solid #e2e8f0; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
   </style>
 </head>
 <body>
@@ -160,9 +160,10 @@
   </div>
 
   <script>
-    // Config Supabase
     const SUPABASE_URL = "https://pi82f6yy0-bmurgia1.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."; // Mets ta vraie clé ici si nécessaire
+    // REMPLACE LA VALEUR CI-DESSOUS PAR TA VRAIE CLÉ ANON DE SUPABASE
+    const SUPABASE_ANON_KEY = "sb_publishable_K0goYNnfKkMmXq9JlVOXGw_r6v2PF2X";
+
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     let biensLocaux = [];
@@ -175,14 +176,15 @@
     }
 
     async function chargerBiens() {
-      const { data, error } = await supabaseClient.from('biens').select('*');
-      if (error) {
-        console.error("Erreur chargement biens :", error);
-        return;
+      try {
+        const { data, error } = await supabaseClient.from('biens').select('*');
+        if (error) throw error;
+        biensLocaux = data || [];
+        afficherBiens();
+        mettreAJourSelects();
+      } catch (err) {
+        console.error("Erreur connexion Supabase :", err.message);
       }
-      biensLocaux = data || [];
-      afficherBiens();
-      mettreAJourSelects();
     }
 
     function afficherBiens() {
@@ -233,17 +235,19 @@
       const loyer_hc = parseFloat(document.getElementById('bien-loyer').value);
       const charges = parseFloat(document.getElementById('bien-charges').value);
 
-      const { data, error } = await supabaseClient
-        .from('biens')
-        .insert([{ nom, adresse, regime, loyer_hc, charges }])
-        .select();
+      try {
+        const { data, error } = await supabaseClient
+          .from('biens')
+          .insert([{ nom, adresse, regime, loyer_hc, charges }])
+          .select();
 
-      if (error) {
-        alert("Erreur lors de l'enregistrement : " + error.message);
-      } else {
+        if (error) throw error;
+
         alert("Bien ajouté avec succès !");
         document.getElementById('form-bien').reset();
         chargerBiens();
+      } catch (error) {
+        alert("Erreur lors de l'enregistrement : " + error.message);
       }
     }
 
@@ -257,7 +261,6 @@
       }
     }
 
-    // Chargement initial
     chargerBiens();
   </script>
 </body>
