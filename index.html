@@ -85,92 +85,64 @@
       <div id="list-biens" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
     </div>
 
-    <!-- Section / Onglet Baux & Locataires -->
+   <!-- Onglet Locataires & Baux -->
 <div id="tab-baux" class="tab-content">
-  <div class="card">
-    <h3>Créer / Éditer un bail de location</h3>
+  <div class="card" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+    <h3 style="margin-top: 0; color: #1e293b;">Ajouter un nouveau bail</h3>
+    
     <form id="form-bail" onsubmit="enregistrerBail(event)">
-      <div class="form-grid">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
         <div>
-          <label>Bien immobilier :</label>
-          <select id="bail-bien-id" required>
+          <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Bien concerné</label>
+          <select id="bail-bien-id" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
             <option value="">-- Sélectionner un bien --</option>
           </select>
         </div>
 
         <div>
-          <label>Nom du locataire :</label>
-          <input type="text" id="bail-locataire" placeholder="ex: Jean Dupont" required />
+          <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Nom du locataire</label>
+          <input type="text" id="bail-locataire" placeholder="ex: Jean Dupont" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
         </div>
 
         <div>
-          <label>Loyer HC (€) :</label>
-          <input type="number" step="0.01" id="bail-loyer" placeholder="570.00" required />
+          <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Loyer HC (€)</label>
+          <input type="number" step="0.01" id="bail-loyer" placeholder="570.00" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
         </div>
 
         <div>
-          <label>Charges (€) :</label>
-          <input type="number" step="0.01" id="bail-charges" placeholder="30.00" required />
+          <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Charges (€)</label>
+          <input type="number" step="0.01" id="bail-charges" placeholder="30.00" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
         </div>
 
         <div>
-          <label>Dépôt de garantie (€) :</label>
-          <input type="number" step="0.01" id="bail-garantie" placeholder="600.00" />
+          <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Dépôt de garantie (€)</label>
+          <input type="number" step="0.01" id="bail-garantie" placeholder="600.00" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
         </div>
 
         <div>
-          <label>Date de début :</label>
-          <input type="date" id="bail-date-debut" required />
+          <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Date de début</label>
+          <input type="date" id="bail-date-debut" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
         </div>
 
-        <div>
-          <label>Lien du document (Google Doc) :</label>
-          <input type="url" id="bail-doc-url" placeholder="https://docs.google.com/document/d/..." />
+        <div style="grid-column: 1 / -1;">
+          <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Lien du bail Google Doc</label>
+          <input type="url" id="bail-doc-url" placeholder="https://docs.google.com/document/d/..." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
         </div>
       </div>
 
-      <button type="submit" class="btn-primary" style="margin-top: 15px;">
+      <button type="submit" style="margin-top: 15px; background: #0f172a; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;">
         Enregistrer le bail
       </button>
     </form>
   </div>
+
+  <div class="card" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+    <h3 style="margin-top: 0; color: #1e293b;">Liste des baux en cours</h3>
+    <div id="liste-baux">
+      <p style="color: #64748b;">Aucun bail enregistré pour le moment.</p>
+    </div>
+  </div>
 </div>
-
-<script>
-  // Fonction pour enregistrer le bail dans Supabase
-  async function enregistrerBail(event) {
-    event.preventDefault();
-
-    const bienId = document.getElementById('bail-bien-id').value;
-    const locataire = document.getElementById('bail-locataire').value;
-    const loyer = parseFloat(document.getElementById('bail-loyer').value);
-    const charges = parseFloat(document.getElementById('bail-charges').value) || 0;
-    const garantie = parseFloat(document.getElementById('bail-garantie').value) || 0;
-    const dateDebut = document.getElementById('bail-date-debut').value;
-    const docUrl = document.getElementById('bail-doc-url').value;
-
-    const { data, error } = await supabaseClient
-      .from('baux')
-      .insert([
-        {
-          bien_id: bienId,
-          locataire_nom: locataire,
-          loyer_hc: loyer,
-          charges: charges,
-          depot_garantie: garantie,
-          date_debut: dateDebut,
-          document_url: docUrl
-        }
-      ]);
-
-    if (error) {
-      alert("Erreur lors de l'enregistrement du bail : " + error.message);
-    } else {
-      alert("Bail enregistré avec succès !");
-      document.getElementById('form-bail').reset();
-    }
-  }
-</script>
 
     <!-- ONGLET 3 : LOYERS & QUITTANCES -->
     <div id="tab-loyers" class="tab-content hidden space-y-6">
