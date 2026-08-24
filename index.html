@@ -26,6 +26,7 @@
     input, select { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; }
     button.btn-submit { background: #0f172a; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 15px; }
     .item-bien { border-bottom: 1px solid #e2e8f0; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
+    .btn-delete { background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 10px; }
   </style>
 </head>
 <body>
@@ -45,7 +46,6 @@
   </nav>
 
   <div class="container">
-    <!-- Tableau de bord -->
     <div class="stats-grid">
       <div class="stat-card"><span>Total Biens</span><div id="stat-total-biens">0</div></div>
       <div class="stat-card"><span>Loyers Mensuels</span><div id="stat-loyers" style="color:#059669;">0.00 €</div></div>
@@ -71,7 +71,7 @@
 
       <div class="card">
         <h3>Mes biens enregistrés</h3>
-        <div id="liste-biens"><p style="color:#64748b;">Chargement des biens...</p></div>
+        <div id="liste-biens"><p style="color:#64748b;">Chargement...</p></div>
       </div>
     </div>
 
@@ -161,12 +161,16 @@
 
   <script>
     const SUPABASE_URL = "https://pi82f6yy0-bmurgia1.supabase.co";
-    // REMPLACE LA VALEUR CI-DESSOUS PAR TA VRAIE CLÉ ANON DE SUPABASE
-    const SUPABASE_ANON_KEY = "sb_publishable_K0goYNnfKkMmXq9JlVOXGw_r6v2PF2X";
+    const SUPABASE_ANON_KEY = "sb_publishable_K0goYNnfKkMmXq9JlVOXGw_r6v2P";
 
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let supabaseClient = null;
+    try {
+      supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } catch (e) {
+      console.warn("Supabase indisponible, bascule en mode local.");
+    }
 
-    let biensLocaux = [];
+    let biensLocaux = JSON.parse(localStorage.getItem('parc_immo_biens')) || [];
 
     function switchTab(tabId, btn) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -176,15 +180,19 @@
     }
 
     async function chargerBiens() {
-      try {
-        const { data, error } = await supabaseClient.from('biens').select('*');
-        if (error) throw error;
-        biensLocaux = data || [];
-        afficherBiens();
-        mettreAJourSelects();
-      } catch (err) {
-        console.error("Erreur connexion Supabase :", err.message);
+      if (supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient.from('biens').select('*');
+          if (!error && data && data.length > 0) {
+            biensLocaux = data;
+            localStorage.setItem('parc_immo_biens', JSON.stringify(biensLocaux));
+          }
+        } catch (err) {
+          console.warn("Chargement depuis Supabase échoué, utilisation des données locales.");
+        }
       }
+      afficherBiens();
+      mettreAJourSelects();
     }
 
     function afficherBiens() {
@@ -199,7 +207,7 @@
         return;
       }
 
-      container.innerHTML = biensLocaux.map(b => {
+      container.innerHTML = biensLocaux.map((b, index) => {
         totalLoyers += parseFloat(b.loyer_hc || 0);
         totalCharges += parseFloat(b.charges || 0);
         return `
@@ -209,6 +217,7 @@
             </div>
             <div>
               <strong>${b.loyer_hc} €</strong> HC (+${b.charges} € chg)
+              <button class="btn-delete" onclick="supprimerBien(${index}, '${b.id || ''}')">🗑️</button>
             </div>
           </div>
         `;
@@ -222,32 +231,54 @@
       const selects = document.querySelectorAll('.select-biens');
       const options = biensLocaux.length === 0 
         ? '<option value="">-- Aucun bien disponible --</option>'
-        : biensLocaux.map(b => `<option value="${b.id}">${b.nom}</option>`).join('');
+        : biensLocaux.map(b => `<option value="${b.nom}">${b.nom}</option>`).join('');
 
       selects.forEach(s => s.innerHTML = options);
     }
 
     async function enregistrerBien(e) {
       e.preventDefault();
-      const nom = document.getElementById('bien-nom').value;
-      const adresse = document.getElementById('bien-adresse').value;
-      const regime = document.getElementById('bien-regime').value;
-      const loyer_hc = parseFloat(document.getElementById('bien-loyer').value);
-      const charges = parseFloat(document.getElementById('bien-charges').value);
+      const nouveauBien = {
+        nom: document.getElementById('bien-nom').value,
+        adresse: document.getElementById('bien-adresse').value,
+        regime: document.getElementById('bien-regime').value,
+        loyer_hc: parseFloat(document.getElementById('bien-loyer').value),
+        charges: parseFloat(document.getElementById('bien-charges').value)
+      };
 
-      try {
-        const { data, error } = await supabaseClient
-          .from('biens')
-          .insert([{ nom, adresse, regime, loyer_hc, charges }])
-          .select();
+      // Sauvegarde locale immédiate
+      biensLocaux.push(nouveauBien);
+      localStorage.setItem('parc_immo_biens', JSON.stringify(biensLocaux));
+      
+      afficherBiens();
+      mettreAJourSelects();
+      document.getElementById('form-bien').reset();
+      alert("Bien enregistré avec succès !");
 
-        if (error) throw error;
+      // Tentative de synchro en arrière-plan avec Supabase
+      if (supabaseClient) {
+        try {
+          await supabaseClient.from('biens').insert([nouveauBien]);
+        } catch (err) {
+          console.warn("Synchro Supabase impossible, sauvegardé localement uniquement.");
+        }
+      }
+    }
 
-        alert("Bien ajouté avec succès !");
-        document.getElementById('form-bien').reset();
-        chargerBiens();
-      } catch (error) {
-        alert("Erreur lors de l'enregistrement : " + error.message);
+    async function supprimerBien(index, id) {
+      if (!confirm("Voulez-vous vraiment supprimer ce bien ?")) return;
+
+      biensLocaux.splice(index, 1);
+      localStorage.setItem('parc_immo_biens', JSON.stringify(biensLocaux));
+      afficherBiens();
+      mettreAJourSelects();
+
+      if (id && supabaseClient) {
+        try {
+          await supabaseClient.from('biens').delete().eq('id', id);
+        } catch (err) {
+          console.warn("Suppression distante échouée.");
+        }
       }
     }
 
